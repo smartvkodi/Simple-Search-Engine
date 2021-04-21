@@ -1,27 +1,30 @@
-package search;
+package search.engine;
 
-import java.io.*;
+import java.io.BufferedReader;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 
-public class PersonAgenda implements Agenda {
-    List<String> persons = new ArrayList<>();
-    Map<String, List<Integer>> invertedIndex = new LinkedHashMap<>();
+class SearchEngine {
 
-    @Override
-    public void loadDataFromSource(String[] args) {
+    List<String> directIndex = new ArrayList<>();
+    InvertedIndex invertedIndex = new InvertedIndex();
 
+    public SearchEngine(String[] args) {
         Map<String, String> configMap = parseArguments(args);
         String importFile = configMap.get("--data") != null ? configMap.get("--data") : "";
 
         if (!importFile.isBlank()) {
-            try (BufferedReader reader = new BufferedReader(new FileReader(importFile))) {
-                String person;
-                while ((person = reader.readLine()) != null) {
-                    int idx = persons.size();
-                    this.persons.add(person);
-                    for (String token : person.toLowerCase().split("\\s+")) {
+            try (BufferedReader reader = new BufferedReader(new FileReader("./" + importFile))) {
+                String line;
+                while ((line = reader.readLine()) != null) {
+                    directIndex.add(line);
+                    int idx = directIndex.size() - 1;
+
+                    for (String token : line.toLowerCase().split("\\s+")) {
                         if (!invertedIndex.containsKey(token)) {
-                            invertedIndex.put(token, new ArrayList<>());
+                            invertedIndex.put(token, new HashSet<>());
                         }
                         invertedIndex.get(token).add(idx);
                     }
@@ -54,23 +57,23 @@ public class PersonAgenda implements Agenda {
         return configMap;
     }
 
-    @Override
-    public void getPersons(String searchTerm) {
-        List<Integer> indexList = invertedIndex.get(searchTerm);
-        if (indexList != null) {
-            for (Integer idx : indexList) {
-                System.out.println(persons.get(idx));
-            }
-        } else {
-            System.out.println("No matching people found.");
-        }
+    Set<Integer> getAllInformation() {
+        return invertedIndex.getAllIndexesSet();
     }
 
-    @Override
-    public void getAllPersons() {
-        for (String person : persons) {
-            System.out.println(person);
-        }
-        System.out.println();
+    List<String> getDirectIndex() {
+        return this.directIndex;
+    }
+
+    Set<Integer> searchWithAllTerms(Set<String> terms) {
+        return invertedIndex.intersection(terms);
+    }
+
+    Set<Integer> searchWithAnyOfTerms(Set<String> terms) {
+        return invertedIndex.union(terms);
+    }
+
+    Set<Integer> searchWithNoneOfTerms(Set<String> terms) {
+        return invertedIndex.difference(terms);
     }
 }
